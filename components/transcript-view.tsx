@@ -21,9 +21,19 @@ interface TranscriptViewProps {
 }
 
 export function TranscriptView({ transcript, currentTime, onSeek, className, videoId }: TranscriptViewProps) {
-    const activeIndex = transcript.findIndex(
-        (segment) => currentTime >= segment.start && currentTime < segment.start + segment.duration
-    );
+    // Find the active segment. We iterate through all segments to find the "best" match.
+    // We favor the latest segment that matches the current time within a 2s lookahead window.
+    // This helps with player lag and short segments, ensuring we don't get stuck on the previous line.
+    let activeIndex = -1;
+    const offset = 1.0;
+    for (let i = 0; i < transcript.length; i++) {
+        const segment = transcript[i];
+        if (segment.start > currentTime + offset) break;
+
+        if (currentTime >= segment.start - offset && currentTime < segment.start + segment.duration) {
+            activeIndex = i;
+        }
+    }
 
     const [translations, setTranslations] = useState<Record<number, string>>({});
     const [showTranslation, setShowTranslation] = useState(false);

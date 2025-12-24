@@ -79,7 +79,7 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
     const [hoverPosition, setHoverPosition] = useState<number | null>(null);
 
     // Resizable layout state
-    const [leftPanelPercentage, setLeftPanelPercentage] = useState(50);
+    const [leftPanelPercentage, setLeftPanelPercentage] = useState(20);
     const containerRef = useRef<HTMLDivElement>(null);
     const isDraggingRef = useRef(false);
 
@@ -124,25 +124,33 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [videoId, playerReady, duration]); // Seek once when player is ready
 
+    const currentTimeRef = useRef(0);
+
+    useEffect(() => {
+        currentTimeRef.current = currentTime;
+    }, [currentTime]);
+
+    const playerId = useMemo(() => `youtube-player-${videoId}`, [videoId]);
+
     // Persistence: Playback Time (Save)
     // Save every 5 seconds if playing
     useEffect(() => {
         if (!isPlaying || !videoId) return;
 
         const saveInterval = setInterval(() => {
-            if (currentTime > 0) {
-                videoDB.savePlaybackTime(videoId, currentTime);
+            if (currentTimeRef.current > 0) {
+                videoDB.savePlaybackTime(videoId, currentTimeRef.current);
             }
         }, 5000);
 
-        return () => clearInterval(saveInterval);
-    }, [isPlaying, videoId, currentTime]);
-
-    // Also save on unmount or pause (handled by onStateChange roughly, but effect cleanup covers unmount)
-    // Actually, capturing unmount is tricky with closures. 
-    // Let's rely on the interval and maybe save on pause via onStateChange logic if we wanted to be precise.
-
-    const playerId = useMemo(() => `youtube-player-${videoId}-${Math.random().toString(36).substr(2, 9)}`, [videoId]);
+        return () => {
+            clearInterval(saveInterval);
+            // Save on unmount or strict effect cleanup
+            if (currentTimeRef.current > 0) {
+                videoDB.savePlaybackTime(videoId, currentTimeRef.current);
+            }
+        };
+    }, [isPlaying, videoId]);
 
     useEffect(() => {
         if (!videoId) return;
@@ -194,6 +202,10 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                                 clearInterval(intervalRef.current);
                                 intervalRef.current = null;
                             }
+                            // Save on pause
+                            if (currentTimeRef.current > 0) {
+                                videoDB.savePlaybackTime(videoId, currentTimeRef.current);
+                            }
                         }
                     }
                 },
@@ -233,6 +245,10 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
             }
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
+            }
+            // Save on unmount
+            if (currentTimeRef.current > 0) {
+                videoDB.savePlaybackTime(videoId, currentTimeRef.current);
             }
         };
     }, [videoId, playerId]);
