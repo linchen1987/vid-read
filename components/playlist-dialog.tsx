@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { History, PlayCircle, Clock } from "lucide-react";
+import { useRef } from "react";
+import { History, PlayCircle, Clock, Download, Upload } from "lucide-react";
 import { videoDB, VideoData } from "@/lib/db";
+import { toast } from "sonner";
 
 export function PlaylistDialog() {
     const [open, setOpen] = useState(false);
     const [videos, setVideos] = useState<VideoData[]>([]);
     const router = useRouter();
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (open) {
@@ -26,6 +29,61 @@ export function PlaylistDialog() {
     const handleVideoClick = (id: string) => {
         setOpen(false);
         router.push(`/v/${id}`);
+    };
+
+    const handleExport = async () => {
+        try {
+            const allVideos = await videoDB.getAllVideos();
+            const blob = new Blob([JSON.stringify(allVideos, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `vidread-history-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success("History exported successfully");
+        } catch (error) {
+            console.error("Export failed:", error);
+            toast.error("Failed to export history");
+        }
+    };
+
+    const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const content = e.target?.result as string;
+                const importedVideos = JSON.parse(content);
+
+                if (!Array.isArray(importedVideos)) {
+                    throw new Error("Invalid format");
+                }
+
+                let count = 0;
+                for (const video of importedVideos) {
+                    if (video.id) {
+                        await videoDB.saveVideo(video);
+                        count++;
+                    }
+                }
+
+                await loadVideos();
+                toast.success(`Imported ${count} videos successfully`);
+            } catch (error) {
+                console.error("Import failed:", error);
+                toast.error("Failed to import history");
+            } finally {
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                }
+            }
+        };
+        reader.readAsText(file);
     };
 
     const formatTime = (ms: number) => {
@@ -47,10 +105,37 @@ export function PlaylistDialog() {
                     <History className="h-6 w-6" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-neutral-900 border-neutral-800 text-white p-0 overflow-hidden">
+            <DialogContent className="sm:max-w-[425px] bg-neutral-900 border-neutral-800 text-white p-0 overflow-hidden text-left">
                 <DialogHeader className="px-6 py-4 border-b border-neutral-800">
                     <DialogTitle>History</DialogTitle>
                 </DialogHeader>
+                <div className="absolute right-12 top-3 flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-neutral-400 hover:text-white"
+                        onClick={handleExport}
+                        title="Export History"
+                    >
+                        <Download className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-neutral-400 hover:text-white"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Import History"
+                    >
+                        <Upload className="h-4 w-4" />
+                    </Button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept=".json"
+                        onChange={handleImport}
+                    />
+                </div>
                 <div className="h-[60vh] overflow-y-auto p-4 space-y-2">
                     {videos.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-neutral-500 space-y-2">

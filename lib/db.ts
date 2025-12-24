@@ -1,4 +1,5 @@
 const DB_NAME = 'vidread-db';
+// const DB_NAME = 'youtube-cut-db';
 const STORE_NAME = 'videos';
 const DB_VERSION = 2; // Increment version for new store
 
