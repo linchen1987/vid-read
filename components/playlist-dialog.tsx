@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
-import { History, PlayCircle, Clock, Download, Upload } from "lucide-react";
+import { History, PlayCircle, Clock, Download, Upload, Trash2 } from "lucide-react";
 import { videoDB, VideoData } from "@/lib/db";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export function PlaylistDialog() {
     const [open, setOpen] = useState(false);
@@ -98,6 +99,17 @@ export function PlaylistDialog() {
         return `${days}d ago`;
     };
 
+    const handleDelete = async (id: string) => {
+        try {
+            await videoDB.deleteVideo(id);
+            setVideos((prev) => prev.filter((v) => v.id !== id));
+            toast.success("Video deleted from history");
+        } catch (error) {
+            console.error("Delete failed:", error);
+            toast.error("Failed to delete video");
+        }
+    };
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -146,45 +158,88 @@ export function PlaylistDialog() {
                         videos.map((video) => (
                             <div
                                 key={video.id}
-                                onClick={() => handleVideoClick(video.id)}
-                                className="flex items-start space-x-3 p-3 rounded-lg hover:bg-white/5 cursor-pointer transition-colors group"
+                                className="flex items-start space-x-3 p-3 rounded-lg hover:bg-white/5 transition-colors group relative"
                             >
-                                <div className="flex-shrink-0 w-24 aspect-video bg-neutral-800 rounded overflow-hidden relative">
-                                    <img
-                                        src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`}
-                                        onError={(e) => {
-                                            (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id}/0.jpg`;
-                                        }}
-                                        alt={video.metadata?.title || "Video thumbnail"}
-                                        className="w-full h-full object-cover"
-                                    />
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <PlayCircle className="w-8 h-8 text-white" />
+                                <div
+                                    className="flex items-start space-x-3 flex-1 cursor-pointer"
+                                    onClick={() => handleVideoClick(video.id)}
+                                >
+                                    <div className="flex-shrink-0 w-24 aspect-video bg-neutral-800 rounded overflow-hidden relative">
+                                        <img
+                                            src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`}
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id}/0.jpg`;
+                                            }}
+                                            alt={video.metadata?.title || "Video thumbnail"}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <PlayCircle className="w-8 h-8 text-white" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="text-sm font-medium leading-snug line-clamp-2 group-hover:text-blue-400 transition-colors">
-                                        {video.metadata?.title || `Video ${video.id}`}
-                                    </h4>
-                                    <div className="flex items-center text-xs text-neutral-500 mt-1 space-x-2">
-                                        {video.metadata?.author && (
-                                            <span>
-                                                {typeof video.metadata.author === 'object'
-                                                    ? (video.metadata.author as any).name || 'Unknown'
-                                                    : video.metadata.author}
-                                            </span>
-                                        )}
-                                        {video.updatedAt && (
-                                            <>
-                                                <span>•</span>
-                                                <span className="flex items-center">
-                                                    <Clock className="w-3 h-3 mr-1" />
-                                                    {formatTime(video.updatedAt)}
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-sm font-medium leading-snug line-clamp-2 group-hover:text-blue-400 transition-colors">
+                                            {video.metadata?.title || `Video ${video.id}`}
+                                        </h4>
+                                        <div className="flex items-center text-xs text-neutral-500 mt-1 space-x-2">
+                                            {video.metadata?.author && (
+                                                <span>
+                                                    {typeof video.metadata.author === 'object'
+                                                        ? (video.metadata.author as any).name || 'Unknown'
+                                                        : video.metadata.author}
                                                 </span>
-                                            </>
-                                        )}
+                                            )}
+                                            {video.updatedAt && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span className="flex items-center">
+                                                        <Clock className="w-3 h-3 mr-1" />
+                                                        {formatTime(video.updatedAt)}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-8 w-8 text-neutral-500 hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64 bg-neutral-900 border-neutral-800 p-3">
+                                        <div className="space-y-3">
+                                            <p className="text-sm text-neutral-300">
+                                                Delete this video? This action cannot be undone.
+                                            </p>
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 text-neutral-400 hover:text-white"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    className="h-8 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 border border-red-500/20"
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        await handleDelete(video.id);
+                                                    }}
+                                                >
+                                                    Delete
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
                             </div>
                         ))
                     )}

@@ -89,6 +89,22 @@ class VideoDB {
         }
     }
 
+    async deleteVideo(id: string): Promise<void> {
+        try {
+            const db = await this.getDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.delete(id);
+
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        } catch (error) {
+            console.error('VideoDB delete error:', error);
+        }
+    }
+
     async saveTranslation(videoId: string, language: string, index: number, text: string): Promise<void> {
         // Determine if we need to queue this
         // We attach this operation to the end of the current queue
