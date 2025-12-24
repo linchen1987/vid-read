@@ -5,9 +5,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause } from "lucide-react";
+import { TranscriptView } from "@/components/transcript-view";
+
+interface TranscriptSegment {
+    text: string;
+    start: number;
+    duration: number;
+}
 
 interface VideoPlayerProps {
     videoId: string;
+    transcript?: TranscriptSegment[];
 }
 
 function formatDuration(seconds: number) {
@@ -16,7 +24,7 @@ function formatDuration(seconds: number) {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-export function VideoPlayer({ videoId }: VideoPlayerProps) {
+export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
     const playerRef = useRef<any>(null);
     const [playerReady, setPlayerReady] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -122,32 +130,54 @@ export function VideoPlayer({ videoId }: VideoPlayerProps) {
     };
 
     return (
-        <div className="w-full flex flex-col gap-4">
-            <Card className="overflow-hidden shadow-sm p-0">
-                <div className="relative bg-black overflow-hidden aspect-video">
-                    <div
-                        id="youtube-player"
-                        className="absolute top-0 left-0 w-full h-full"
-                    />
-                </div>
-            </Card>
+        <div className="w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 flex flex-col gap-4">
+                    <Card className="overflow-hidden shadow-sm p-0">
+                        <div className="relative bg-black overflow-hidden aspect-video">
+                            <div
+                                id="youtube-player"
+                                className="absolute top-0 left-0 w-full h-full"
+                            />
+                        </div>
+                    </Card>
 
-            <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-4">
-                    <Button variant="outline" size="icon" onClick={togglePlay}>
-                        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                    </Button>
-                    <div className="flex-1">
-                        <Slider
-                            value={[currentTime]}
-                            max={duration}
-                            step={1}
-                            onValueChange={handleSeek}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-4">
+                            <Button variant="outline" size="icon" onClick={togglePlay}>
+                                {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                            </Button>
+                            <div className="flex-1">
+                                <Slider
+                                    value={[currentTime]}
+                                    max={duration}
+                                    step={1}
+                                    onValueChange={handleSeek}
+                                />
+                            </div>
+                            <span className="text-sm font-mono text-muted-foreground min-w-[100px] text-right">
+                                {formatDuration(currentTime)} / {formatDuration(duration)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="lg:col-span-1 relative">
+                    <div className="lg:absolute lg:inset-0 w-full">
+                        <TranscriptView
+                            transcript={transcript}
+                            currentTime={currentTime}
+                            onSeek={(time) => {
+                                if (playerRef.current) {
+                                    playerRef.current.seekTo(time, true);
+                                    setCurrentTime(time);
+                                    // Optional: trigger play if paused?
+                                    // if (!isPlaying) playerRef.current.playVideo();
+                                }
+                            }}
+                            className="max-h-[500px] lg:max-h-none h-full"
                         />
                     </div>
-                    <span className="text-sm font-mono text-muted-foreground min-w-[100px] text-right">
-                        {formatDuration(currentTime)} / {formatDuration(duration)}
-                    </span>
                 </div>
             </div>
         </div>
