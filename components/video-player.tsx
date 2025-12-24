@@ -122,11 +122,17 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
         }
     };
 
-    const handleSeek = (value: number[]) => {
+    const seekTo = (time: number) => {
         if (!playerRef.current) return;
-        const time = value[0];
         playerRef.current.seekTo(time, true);
         setCurrentTime(time);
+        if (!isPlaying) {
+            playerRef.current.playVideo();
+        }
+    };
+
+    const handleSeek = (value: number[]) => {
+        seekTo(value[0]);
     };
 
     return (
@@ -163,20 +169,20 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
                 </div>
 
                 <div className="lg:col-span-1 relative">
-                    <div className="lg:absolute lg:inset-0 w-full">
-                        <TranscriptView
-                            transcript={transcript}
-                            currentTime={currentTime}
-                            onSeek={(time) => {
-                                if (playerRef.current) {
-                                    playerRef.current.seekTo(time, true);
-                                    setCurrentTime(time);
-                                    // Optional: trigger play if paused?
-                                    // if (!isPlaying) playerRef.current.playVideo();
-                                }
-                            }}
-                            className="max-h-[500px] lg:max-h-none h-full"
-                        />
+                    <div className="absolute inset-0 w-full h-full bg-card rounded-lg overflow-hidden border shadow-sm">
+                        {transcript.length > 0 ? (
+                            <TranscriptView
+                                transcript={transcript}
+                                currentTime={currentTime}
+                                onSeek={seekTo}
+                                videoId={videoId}
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
+                                {/* Placeholder or loading state could go here */}
+                                <p className="text-sm">Fetching transcript...</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

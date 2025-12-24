@@ -1,6 +1,7 @@
 
 ## Environment
 - SUPADATA_API_KEY
+- XAI_API_KEY
 
 ## Getting Started
 
