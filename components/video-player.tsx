@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause } from "lucide-react";
 import { TranscriptView } from "@/components/transcript-view";
+import { videoDB } from "@/lib/db";
 
 interface TranscriptSegment {
     text: string;
@@ -30,7 +31,68 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
+    const [playbackRate, setPlaybackRate] = useState(1);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const [hoverTime, setHoverTime] = useState<number | null>(null);
+    const [hoverPosition, setHoverPosition] = useState<number | null>(null);
+
+    // Resizable layout state
+    const [leftPanelPercentage, setLeftPanelPercentage] = useState(50);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const isDraggingRef = useRef(false);
+
+    // Keep a ref of the latest percentage to access inside the event listener closure
+    const percentageRef = useRef(leftPanelPercentage);
+    useEffect(() => {
+        percentageRef.current = leftPanelPercentage;
+    }, [leftPanelPercentage]);
+
+    // Persistence: Layout Ratio
+    useEffect(() => {
+        const savedRatio = localStorage.getItem("layout-left-panel-ratio");
+        if (savedRatio) {
+            const parsed = parseFloat(savedRatio);
+            if (!isNaN(parsed) && parsed >= 20 && parsed <= 80) {
+                setLeftPanelPercentage(parsed);
+            }
+        }
+    }, []);
+
+    // Persistence: Playback Time (Load)
+    useEffect(() => {
+        if (!videoId || !playerReady) return;
+
+        const loadPlaybackTime = async () => {
+            const videoData = await videoDB.getVideo(videoId);
+            if (videoData?.lastPlaybackTime && playerRef.current) {
+                const time = videoData.lastPlaybackTime;
+                // Only seek if it's significant (e.g. > 5s) and not near end
+                if (time > 2 && Math.abs(time - duration) > 5) {
+                    seekTo(time);
+                }
+            }
+        };
+        loadPlaybackTime();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [videoId, playerReady, duration]); // Seek once when player is ready
+
+    // Persistence: Playback Time (Save)
+    // Save every 5 seconds if playing
+    useEffect(() => {
+        if (!isPlaying || !videoId) return;
+
+        const saveInterval = setInterval(() => {
+            if (currentTime > 0) {
+                videoDB.savePlaybackTime(videoId, currentTime);
+            }
+        }, 5000);
+
+        return () => clearInterval(saveInterval);
+    }, [isPlaying, videoId, currentTime]);
+
+    // Also save on unmount or pause (handled by onStateChange roughly, but effect cleanup covers unmount)
+    // Actually, capturing unmount is tricky with closures. 
+    // Let's rely on the interval and maybe save on pause via onStateChange logic if we wanted to be precise.
 
     useEffect(() => {
         if (!videoId) return;
@@ -55,6 +117,13 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
                         playerRef.current = player;
                         setPlayerReady(true);
                         setDuration(player.getDuration());
+                        if (player.getPlaybackRate) {
+                            setPlaybackRate(player.getPlaybackRate());
+                        }
+                    },
+                    onPlaybackRateChange: (event: { data: number }) => {
+                        if (!mounted) return;
+                        setPlaybackRate(event.data);
                     },
                     onStateChange: (event: { data: number }) => {
                         if (!mounted) return;
@@ -135,10 +204,144 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
         seekTo(value[0]);
     };
 
+    // Keyboard controls
+    const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isFastForwardingRef = useRef(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!e.repeat && !longPressTimeoutRef.current && !isFastForwardingRef.current) {
+                    longPressTimeoutRef.current = setTimeout(() => {
+                        longPressTimeoutRef.current = null; // Clear ref to indicate long press activated
+                        if (playerRef.current) {
+                            playerRef.current.setPlaybackRate(2);
+                            isFastForwardingRef.current = true;
+                        }
+                    }, 200);
+                }
+            }
+
+            if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                if (!e.repeat && !longPressTimeoutRef.current && !isFastForwardingRef.current) {
+                    longPressTimeoutRef.current = setTimeout(() => {
+                        longPressTimeoutRef.current = null; // Clear ref to indicate long press activated
+                        if (playerRef.current) {
+                            playerRef.current.setPlaybackRate(2);
+                            isFastForwardingRef.current = true;
+                        }
+                    }, 200);
+                }
+            }
+
+            if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                // Seek backward 5s immediately
+                if (playerRef.current && !e.repeat) {
+                    const curr = playerRef.current.getCurrentTime();
+                    seekTo(curr - 5);
+                }
+            }
+        };
+
+        const handleKeyUp = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (longPressTimeoutRef.current) {
+                    // Short press
+                    clearTimeout(longPressTimeoutRef.current);
+                    longPressTimeoutRef.current = null;
+                    togglePlay();
+                } else if (isFastForwardingRef.current) {
+                    // Start of long press release
+                    if (playerRef.current) playerRef.current.setPlaybackRate(1);
+                    isFastForwardingRef.current = false;
+                }
+            }
+
+            if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                if (longPressTimeoutRef.current) {
+                    // Short press
+                    clearTimeout(longPressTimeoutRef.current);
+                    longPressTimeoutRef.current = null;
+                    if (playerRef.current) {
+                        const curr = playerRef.current.getCurrentTime();
+                        seekTo(curr + 5);
+                    }
+                } else if (isFastForwardingRef.current) {
+                    // Long press release
+                    if (playerRef.current) playerRef.current.setPlaybackRate(1);
+                    isFastForwardingRef.current = false;
+                }
+            }
+        };
+
+        // Use capture to ensure we handle events even if focused elements (like Slider) try to consume them
+        window.addEventListener('keydown', handleKeyDown, true);
+        window.addEventListener('keyup', handleKeyUp, true);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown, true);
+            window.removeEventListener('keyup', handleKeyUp, true);
+            if (longPressTimeoutRef.current) clearTimeout(longPressTimeoutRef.current);
+        };
+    }, [isPlaying]); // Re-bind when togglePlay/seekTo dependencies change
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        isDraggingRef.current = true;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+        if (!isDraggingRef.current || !containerRef.current) return;
+
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const newPercentage = ((e.clientX - containerRect.left) / containerRect.width) * 100;
+
+        // Limit the resize range (e.g., between 20% and 80%)
+        const constrainedPercentage = Math.max(20, Math.min(80, newPercentage));
+        setLeftPanelPercentage(constrainedPercentage);
+    };
+
+    const handleMouseUp = () => {
+        isDraggingRef.current = false;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+
+        // Save final percentage from ref to avoid stale closure
+        localStorage.setItem("layout-left-panel-ratio", percentageRef.current.toString());
+    };
+
     return (
-        <div className="w-full">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 flex flex-col gap-4">
+        <div
+            className="w-full"
+            ref={containerRef}
+            style={{
+                '--left-panel-width': `${leftPanelPercentage}%`
+            } as React.CSSProperties}
+        >
+            <div className="flex flex-col lg:flex-row gap-0 lg:gap-4 relative">
+                {/* Left Panel: Video + Controls */}
+                <div
+                    className="flex flex-col gap-4 w-full lg:w-[var(--left-panel-width)] shrink-0"
+                >
                     <Card className="overflow-hidden shadow-sm p-0">
                         <div className="relative bg-black overflow-hidden aspect-video">
                             <div
@@ -153,14 +356,48 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
                             <Button variant="outline" size="icon" onClick={togglePlay}>
                                 {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                             </Button>
-                            <div className="flex-1">
+
+                            <div
+                                className="flex-1 relative py-2 cursor-pointer group"
+                                onMouseMove={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const x = e.clientX - rect.left;
+                                    const percent = Math.max(0, Math.min(1, x / rect.width));
+                                    setHoverTime(percent * duration);
+                                    setHoverPosition(x);
+                                }}
+                                onMouseLeave={() => {
+                                    setHoverTime(null);
+                                    setHoverPosition(null);
+                                }}
+                                onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const x = e.clientX - rect.left;
+                                    const percent = Math.max(0, Math.min(1, x / rect.width));
+                                    seekTo(percent * duration);
+                                }}
+                            >
                                 <Slider
                                     value={[currentTime]}
                                     max={duration}
                                     step={1}
                                     onValueChange={handleSeek}
+                                    className="cursor-pointer"
                                 />
+
+                                {hoverTime !== null && (
+                                    <div
+                                        className="absolute bottom-full mb-1 px-1.5 py-0.5 bg-secondary text-secondary-foreground text-[10px] font-mono rounded border shadow-sm pointer-events-none transform -translate-x-1/2 z-50 whitespace-nowrap"
+                                        style={{ left: hoverPosition !== null ? hoverPosition : 0 }}
+                                    >
+                                        {formatDuration(hoverTime)}
+                                    </div>
+                                )}
                             </div>
+
+                            <span className="text-xs font-mono font-medium text-primary bg-primary/10 px-2 py-1 rounded min-w-[32px] text-center">
+                                {playbackRate}x
+                            </span>
                             <span className="text-sm font-mono text-muted-foreground min-w-[100px] text-right">
                                 {formatDuration(currentTime)} / {formatDuration(duration)}
                             </span>
@@ -168,8 +405,24 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
                     </div>
                 </div>
 
-                <div className="lg:col-span-1 relative">
-                    <div className="absolute inset-0 w-full h-full bg-card rounded-lg overflow-hidden border shadow-sm">
+                {/* Resizer Handle (Desktop only) */}
+                <div
+                    className="hidden lg:flex w-4 bg-transparent hover:bg-primary/10 cursor-col-resize transition-colors items-center justify-center shrink-0 -mx-2 z-10 select-none"
+                    onMouseDown={handleMouseDown}
+                >
+                    <div className="w-1 h-8 bg-muted-foreground/20 rounded-full" />
+                </div>
+
+                {/* Right Panel: Transcript */}
+                {/* 
+                   Mobile: w-full h-[500px]
+                   Desktop: flexible width, viewport height
+                   We use 'lg:flex-1 lg:w-0' to fill remaining space in flex row
+                */}
+                <div
+                    className="relative w-full lg:flex-1 lg:w-auto h-[500px] lg:h-[calc(100vh-120px)] mt-4 lg:mt-0"
+                >
+                    <div className="h-full w-full bg-card rounded-lg overflow-hidden border shadow-sm">
                         {transcript.length > 0 ? (
                             <TranscriptView
                                 transcript={transcript}
@@ -179,7 +432,6 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
                             />
                         ) : (
                             <div className="flex items-center justify-center h-full text-muted-foreground">
-                                {/* Placeholder or loading state could go here */}
                                 <p className="text-sm">Fetching transcript...</p>
                             </div>
                         )}

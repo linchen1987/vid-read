@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
@@ -73,14 +73,46 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
 
 
     // Auto-scroll logic
-    const activeRef = (node: HTMLDivElement | null) => {
-        if (node && activeIndex >= 0) {
-            // Only scroll if we are tracking active index
-            node.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-            });
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isAutoScrolling = useRef(false);
+    const [isUserScrolling, setIsUserScrolling] = useState(false);
+
+    // Auto-scroll logic
+    useEffect(() => {
+        if (activeIndex !== -1 && scrollRef.current && !isUserScrolling) {
+            // Fix: The direct child is the wrapper div, so we need to access its children
+            const wrapper = scrollRef.current.firstElementChild;
+            if (!wrapper) return;
+
+            const activeEl = wrapper.children[activeIndex] as HTMLElement;
+            if (activeEl) {
+                isAutoScrolling.current = true;
+                // Scroll with smooth behavior
+                activeEl.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                });
+
+                // Reset auto-scrolling flag after a delay to cover the smooth scroll duration
+                setTimeout(() => {
+                    isAutoScrolling.current = false;
+                }, 1000);
+            }
         }
+    }, [activeIndex, isUserScrolling]);
+
+    const handleScroll = () => {
+        // If we are auto-scrolling, ignore this event
+        if (isAutoScrolling.current) return;
+
+        setIsUserScrolling(true);
+        if (scrollTimeoutRef.current) {
+            clearTimeout(scrollTimeoutRef.current);
+        }
+        scrollTimeoutRef.current = setTimeout(() => {
+            setIsUserScrolling(false);
+        }, 60 * 1000); // Resume auto-scroll after 60 seconds of inactivity
     };
 
     if (!transcript || transcript.length === 0) {
@@ -88,52 +120,67 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
     }
 
     return (
-        <div className={cn("flex flex-col h-full overflow-hidden rounded-md border bg-card", className)}>
-            <div className="flex items-center justify-between p-2 border-b bg-muted/20">
-                <span className="text-sm font-medium pl-2">Transcript</span>
+        <div className={cn("flex flex-col h-full bg-card rounded-lg overflow-hidden border shadow-sm relative", className)}>
+            <div className="p-3 border-b bg-muted/30 flex justify-between items-center">
+                <h3 className="font-semibold text-sm">Transcript</h3>
                 <Button
-                    variant={showTranslation ? "secondary" : "ghost"}
+                    variant="ghost"
                     size="sm"
-                    className="h-8 gap-2"
+                    className="h-8 gap-1.5 text-xs"
                     onClick={() => setShowTranslation(!showTranslation)}
                 >
-                    <Languages className="w-4 h-4" />
-                    {showTranslation ? "Original" : "Translate"}
+                    <Languages className="w-3.5 h-3.5" />
+                    {showTranslation ? "Hide Translation" : "Translate"}
                 </Button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
-                <div className="flex flex-col gap-4">
+            <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto p-2 relative"
+                onScroll={handleScroll}
+            >
+                <div className="flex flex-col gap-0">
                     {transcript.map((segment, index) => {
                         const isActive = index === activeIndex;
                         return (
                             <div
                                 key={index}
-                                ref={isActive ? activeRef : null}
                                 className={cn(
-                                    "cursor-pointer rounded p-3 transition-colors hover:bg-muted/50",
-                                    isActive ? "bg-primary/10 border-l-2 border-primary" : "text-muted-foreground border-l-2 border-transparent"
+                                    "cursor-pointer rounded-sm p-2 transition-colors hover:bg-muted/50 flex gap-3",
+                                    isActive ? "bg-primary/10" : "text-muted-foreground"
                                 )}
                                 onClick={() => onSeek(segment.start)}
                             >
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-mono opacity-50">
-                                        {Math.floor(segment.start / 60)}:
-                                        {Math.floor(segment.start % 60).toString().padStart(2, "0")}
-                                    </span>
+                                <div className="flex-none w-10 text-xs font-mono opacity-40 pt-0.5 text-right select-none">
+                                    {Math.floor(segment.start / 60)}:
+                                    {Math.floor(segment.start % 60).toString().padStart(2, "0")}
                                 </div>
-                                <p className={cn("leading-relaxed", isActive && "font-medium text-foreground")}>
-                                    {segment.text}
-                                </p>
-                                {showTranslation && translations[index] && (
-                                    <p className="mt-2 text-sm text-primary/80 leading-relaxed border-t pt-2 border-dashed border-primary/20">
-                                        {translations[index]}
+                                <div className="flex-1">
+                                    <p className={cn("text-sm leading-relaxed", isActive && "font-medium text-foreground")}>
+                                        {segment.text}
                                     </p>
-                                )}
+                                    {showTranslation && translations[index] && (
+                                        <p className="mt-1 text-sm text-primary/80 leading-relaxed">
+                                            {translations[index]}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
                 </div>
             </div>
+            {isUserScrolling && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        className="shadow-lg bg-background/80 backdrop-blur-sm border hover:bg-background/90"
+                        onClick={() => setIsUserScrolling(false)}
+                    >
+                        Back to current
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }

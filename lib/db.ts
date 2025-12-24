@@ -19,6 +19,7 @@ export interface VideoData {
     metadata?: VideoMeta;
     transcript?: TranscriptSegment[];
     translations?: Record<string, Record<number, string>>; // lang -> index -> text
+    lastPlaybackTime?: number;
     updatedAt: number;
 }
 
@@ -113,6 +114,32 @@ class VideoDB {
             }
         });
 
+        return this.saveQueue;
+    }
+
+    async savePlaybackTime(videoId: string, time: number): Promise<void> {
+        // Debounce or queue? For playback time, we probably don't need strict queuing like translations 
+        // because it's overwritten rapidly. But using the queue ensures we don't conflict with translation saves.
+        // Actually, let's allow it to float, but we must read fresh data.
+        // But if saveTranslation is writing, we might overwrite.
+        // So we SHOULD use the queue to be safe against race conditions with translation saving.
+
+        // Optimization: only save if change is significant? (e.g. > 1s). 
+        // For now, let's just queue it.
+
+        this.saveQueue = this.saveQueue.then(async () => {
+            try {
+                const video = await this.getVideo(videoId);
+                if (!video) return; // Can't save time for unknown video
+
+                video.lastPlaybackTime = time;
+                video.updatedAt = Date.now();
+
+                await this.saveVideo(video);
+            } catch (error) {
+                console.error('VideoDB savePlaybackTime error:', error);
+            }
+        });
         return this.saveQueue;
     }
 }
