@@ -6,6 +6,7 @@ export interface VideoMeta {
     title?: string;
     author?: string;
     description?: string;
+    publishDate?: string;
 }
 
 export interface TranscriptSegment {

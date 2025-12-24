@@ -11,7 +11,6 @@ export default async function VideoPage({ params }: PageProps) {
 
     return (
         <div className="w-full px-4 py-6">
-            <h1 className="text-2xl font-bold mb-4">Playing Video: {id}</h1>
             <VideoPlayerWrapper videoId={id} />
         </div>
     );

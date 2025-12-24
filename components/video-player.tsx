@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause } from "lucide-react";
 import { TranscriptView } from "@/components/transcript-view";
-import { videoDB } from "@/lib/db";
+import { videoDB, VideoMeta } from "@/lib/db";
+import { ExternalLink } from "lucide-react";
 
 interface TranscriptSegment {
     text: string;
@@ -17,6 +18,7 @@ interface TranscriptSegment {
 interface VideoPlayerProps {
     videoId: string;
     transcript?: TranscriptSegment[];
+    metadata?: VideoMeta;
 }
 
 function formatDuration(seconds: number) {
@@ -25,7 +27,47 @@ function formatDuration(seconds: number) {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
+function formatTimeAgo(dateString: string) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (isNaN(seconds)) return "";
+
+    const intervals = {
+        year: 31536000,
+        month: 2592000,
+        week: 604800,
+        day: 86400,
+        hour: 3600,
+        minute: 60
+    };
+
+    if (seconds < intervals.minute) {
+        return "just now";
+    } else if (seconds < intervals.hour) {
+        const count = Math.floor(seconds / intervals.minute);
+        return `${count} minute${count > 1 ? 's' : ''} ago`;
+    } else if (seconds < intervals.day) {
+        const count = Math.floor(seconds / intervals.hour);
+        return `${count} hour${count > 1 ? 's' : ''} ago`;
+    } else if (seconds < intervals.week) {
+        const count = Math.floor(seconds / intervals.day);
+        return `${count} day${count > 1 ? 's' : ''} ago`;
+    } else if (seconds < intervals.month) {
+        const count = Math.floor(seconds / intervals.week);
+        return `${count} week${count > 1 ? 's' : ''} ago`;
+    } else if (seconds < intervals.year) {
+        const count = Math.floor(seconds / intervals.month);
+        return `${count} month${count > 1 ? 's' : ''} ago`;
+    } else {
+        const count = Math.floor(seconds / intervals.year);
+        return `${count} year${count > 1 ? 's' : ''} ago`;
+    }
+}
+
+export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerProps) {
+    console.log("VideoPlayer metadata:", metadata);
     const playerRef = useRef<any>(null);
     const [playerReady, setPlayerReady] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -342,6 +384,28 @@ export function VideoPlayer({ videoId, transcript = [] }: VideoPlayerProps) {
                 <div
                     className="flex flex-col gap-4 w-full lg:w-[var(--left-panel-width)] shrink-0"
                 >
+                    {metadata && (
+                        <div className="flex flex-col gap-1">
+                            <h1 className="text-xl font-semibold leading-tight line-clamp-2" title={metadata.title}>
+                                {metadata.title}
+                            </h1>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {metadata.publishDate && (
+                                    <span>{formatTimeAgo(metadata.publishDate)}</span>
+                                )}
+                                <a
+                                    href={`https://www.youtube.com/watch?v=${videoId}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 hover:text-primary transition-colors"
+                                >
+                                    <ExternalLink className="h-3 w-3" />
+                                    Watch on YouTube
+                                </a>
+                            </div>
+                        </div>
+                    )}
+
                     <Card className="overflow-hidden shadow-sm p-0">
                         <div className="relative bg-black overflow-hidden aspect-video">
                             <div
