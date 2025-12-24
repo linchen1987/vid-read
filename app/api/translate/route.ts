@@ -8,12 +8,19 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid request: texts array required' }, { status: 400 });
         }
 
-        const apiKey = process.env.XAI_API_KEY;
+        const authHeader = request.headers.get('authorization');
+        const xApiKey = request.headers.get('x-api-key');
+
+        let apiKey = xApiKey;
+        if (!apiKey && authHeader && authHeader.startsWith('Bearer ')) {
+            apiKey = authHeader.substring(7);
+        }
+
         console.log("[API] Translation request received. Texts count:", texts.length, "Target:", targetLanguage);
 
         if (!apiKey) {
             console.error("[API] Missing XAI_API_KEY");
-            return NextResponse.json({ error: 'Server configuration error: Missing API Key' }, { status: 500 });
+            return NextResponse.json({ error: 'Server configuration error: Missing API Key' }, { status: 401 });
         }
 
         // XAI uses OpenAI-compatible API

@@ -19,6 +19,9 @@ export function VideoPlayerWrapper({ videoId }: VideoPlayerWrapperProps) {
         async function loadData() {
             if (!videoId) return;
 
+            // Get keys from localStorage
+            const supadataKey = localStorage.getItem("supadata_api_key") || "";
+
             let loadedTranscript = false;
             let loadedMetadata = false;
 
@@ -52,23 +55,28 @@ export function VideoPlayerWrapper({ videoId }: VideoPlayerWrapperProps) {
             // 2. Fetch missing data from API
             try {
                 if (!loadedTranscript) {
-                    console.log("Fetching transcript from server");
-                    const data = await fetchTranscript(videoId);
-                    setTranscript(data);
+                    if (!supadataKey) {
+                        console.warn("Missing Supadata API Key");
+                        // We could show a toast here, or just let it fail/not fetch
+                    } else {
+                        console.log("Fetching transcript from server");
+                        const data = await fetchTranscript(videoId, supadataKey);
+                        setTranscript(data);
 
-                    // Save Transcript
-                    const videoData = await videoDB.getVideo(videoId);
-                    await videoDB.saveVideo({
-                        ...videoData,
-                        id: videoId,
-                        updatedAt: Date.now(),
-                        transcript: data,
-                    });
+                        // Save Transcript
+                        const videoData = await videoDB.getVideo(videoId);
+                        await videoDB.saveVideo({
+                            ...videoData,
+                            id: videoId,
+                            updatedAt: Date.now(),
+                            transcript: data,
+                        });
+                    }
                 }
 
                 if (!loadedMetadata) {
                     console.log("Fetching metadata from server");
-                    const meta = await fetchVideoMetadata(videoId);
+                    const meta = await fetchVideoMetadata(videoId, supadataKey);
                     if (meta) {
                         const videoMeta = {
                             title: meta.title,

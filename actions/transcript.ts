@@ -1,7 +1,6 @@
 "use server";
 
-export async function fetchTranscript(videoId: string) {
-    const apiKey = process.env.SUPADATA_API_KEY;
+export async function fetchTranscript(videoId: string, apiKey: string) {
     if (!apiKey) {
         throw new Error("Missing SUPADATA_API_KEY");
     }

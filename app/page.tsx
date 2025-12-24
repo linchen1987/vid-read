@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Youtube } from "lucide-react";
 import { toast } from "sonner";
+import { Settings } from "@/components/settings";
 
 export default function Home() {
     const [url, setUrl] = useState("");
@@ -39,6 +40,11 @@ export default function Home() {
             {/* Background Effects */}
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px]" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
+
+            {/* Settings Button */}
+            <div className="absolute top-4 right-4 z-20">
+                <Settings />
+            </div>
 
             <div className="z-10 flex flex-col items-center w-full max-w-2xl space-y-8 text-center">
                 <div className="space-y-4">
@@ -79,3 +85,4 @@ export default function Home() {
         </main>
     );
 }
+

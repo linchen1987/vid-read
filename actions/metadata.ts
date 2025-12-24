@@ -9,11 +9,10 @@ export interface VideoMetadata {
     publish_date?: string; // ISO string
 }
 
-export async function fetchVideoMetadata(videoId: string): Promise<VideoMetadata | null> {
+export async function fetchVideoMetadata(videoId: string, apiKey?: string): Promise<VideoMetadata | null> {
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
     // 1. Try Supadata
-    const apiKey = process.env.SUPADATA_API_KEY;
     if (apiKey) {
         try {
             // Reference uses 'id' param, changing to match strict pattern

@@ -12,7 +12,12 @@ export function useTranslation(targetLanguage: string = "zh-CN") {
 
     // Initialize batcher
     if (!batcherRef.current) {
-        batcherRef.current = new TranslationBatcher(50, 20, targetLanguage);
+        // Get key inside effect or lazily? 
+        // NOTE: We need to recreate batcher if key changes? 
+        // For simplicity, we just read it once on mount. 
+        // Ideally we should react to key changes, but that might require Context.
+        const apiKey = localStorage.getItem("xai_api_key") || "";
+        batcherRef.current = new TranslationBatcher(50, 20, targetLanguage, apiKey);
     }
 
     const translate = useCallback(

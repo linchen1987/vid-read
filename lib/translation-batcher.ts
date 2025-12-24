@@ -10,7 +10,8 @@ export class TranslationBatcher {
     constructor(
         private readonly batchDelay: number = 50,
         private readonly maxBatchSize: number = 50,
-        private readonly targetLanguage: string = "zh-CN"
+        private readonly targetLanguage: string = "zh-CN",
+        private readonly apiKey: string = ""
     ) { }
 
     translate(text: string): Promise<string> {
@@ -45,9 +46,14 @@ export class TranslationBatcher {
         const texts = batch.map((item) => item.text);
 
         try {
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (this.apiKey) {
+                headers["x-api-key"] = this.apiKey;
+            }
+
             const response = await fetch("/api/translate", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: headers,
                 body: JSON.stringify({ texts, targetLanguage: this.targetLanguage }),
             });
 
