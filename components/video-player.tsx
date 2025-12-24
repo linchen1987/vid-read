@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -142,6 +142,8 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
     // Actually, capturing unmount is tricky with closures. 
     // Let's rely on the interval and maybe save on pause via onStateChange logic if we wanted to be precise.
 
+    const playerId = useMemo(() => `youtube-player-${videoId}-${Math.random().toString(36).substr(2, 9)}`, [videoId]);
+
     useEffect(() => {
         if (!videoId) return;
 
@@ -149,9 +151,11 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
         let player: any = null;
 
         const initializePlayer = () => {
-            if (!mounted || playerRef.current) return;
+            if (!mounted) return;
+            // Prevent double initialization if playerRef already has a value
+            if (playerRef.current) return;
 
-            player = new (window as any).YT.Player("youtube-player", {
+            player = new (window as any).YT.Player(playerId, {
                 videoId: videoId,
                 playerVars: {
                     autoplay: 1,
@@ -162,11 +166,10 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                 events: {
                     onReady: (event: { target: any }) => {
                         if (!mounted) return;
-                        playerRef.current = player;
                         setPlayerReady(true);
-                        setDuration(player.getDuration());
-                        if (player.getPlaybackRate) {
-                            setPlaybackRate(player.getPlaybackRate());
+                        setDuration(event.target.getDuration());
+                        if (event.target.getPlaybackRate) {
+                            setPlaybackRate(event.target.getPlaybackRate());
                         }
                     },
                     onPlaybackRateChange: (event: { data: number }) => {
@@ -195,11 +198,15 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                     }
                 },
             });
+            // Capture reference immediately to ensure cleanup capabilities
+            playerRef.current = player;
         };
 
         if ((window as any).YT && (window as any).YT.Player) {
             initializePlayer();
         } else {
+            // Check if script is already present but API not ready?
+            // Actually usually window.YT is sufficient check.
             if (typeof document !== 'undefined' && document.body && !document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
                 const tag = document.createElement("script");
                 tag.src = "https://www.youtube.com/iframe_api";
@@ -228,7 +235,7 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                 clearInterval(intervalRef.current);
             }
         };
-    }, [videoId]);
+    }, [videoId, playerId]);
 
     const togglePlay = () => {
         if (!playerRef.current) return;
@@ -417,7 +424,7 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                     <Card className="overflow-hidden shadow-sm p-0">
                         <div className={`relative bg-black overflow-hidden aspect-video ${isDragging ? 'pointer-events-none' : ''}`}>
                             <div
-                                id="youtube-player"
+                                id={playerId}
                                 className="absolute top-0 left-0 w-full h-full"
                             />
                         </div>

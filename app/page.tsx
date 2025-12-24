@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Youtube } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Home() {
     const [url, setUrl] = useState("");
@@ -29,7 +30,7 @@ export default function Home() {
         if (videoId) {
             router.push(`/v/${videoId}`);
         } else {
-            alert("Invalid YouTube URL or ID");
+            toast.error("Invalid YouTube URL or ID");
         }
     };
 
