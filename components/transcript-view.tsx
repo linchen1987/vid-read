@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "@/hooks/use-translation";
-import { Languages } from "lucide-react";
+import { Languages, Copy, FileText, Check } from "lucide-react";
 import { videoDB } from "@/lib/db";
 
 interface TranscriptSegment {
@@ -28,6 +29,7 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
     const [showTranslation, setShowTranslation] = useState(false);
     const { translate } = useTranslation("zh-CN");
     const [isTranslatingAll, setIsTranslatingAll] = useState(false);
+    const [copiedState, setCopiedState] = useState<"original" | "article" | null>(null);
 
     // Load translations from DB on mount/change
     useEffect(() => {
@@ -115,6 +117,32 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
         }, 60 * 1000); // Resume auto-scroll after 60 seconds of inactivity
     };
 
+    const handleCopy = async (type: "original" | "article") => {
+        if (!transcript.length) return;
+
+        let textToCopy = "";
+
+        if (type === "original") {
+            textToCopy = transcript.map((segment) => {
+                const timeStr = `${Math.floor(segment.start / 60)}:${Math.floor(segment.start % 60).toString().padStart(2, "0")}`;
+                return `[${timeStr}] ${segment.text}`;
+            }).join("\n");
+        } else {
+            // Article mode: join text with spaces, removing timestamps
+            textToCopy = transcript.map((segment) => {
+                return segment.text;
+            }).join(" ");
+        }
+
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            setCopiedState(type);
+            setTimeout(() => setCopiedState(null), 2000);
+        } catch (err) {
+            console.error("Failed to copy text: ", err);
+        }
+    };
+
     if (!transcript || transcript.length === 0) {
         return <div className="p-4 text-center text-muted-foreground">No transcript available</div>;
     }
@@ -123,15 +151,56 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
         <div className={cn("flex flex-col h-full bg-card rounded-lg overflow-hidden border shadow-sm relative", className)}>
             <div className="p-3 border-b bg-muted/30 flex justify-between items-center">
                 <h3 className="font-semibold text-sm">Transcript</h3>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs"
-                    onClick={() => setShowTranslation(!showTranslation)}
-                >
-                    <Languages className="w-3.5 h-3.5" />
-                    {showTranslation ? "Hide Translation" : "Translate"}
-                </Button>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 gap-1.5 text-xs"
+                        onClick={() => setShowTranslation(!showTranslation)}
+                    >
+                        <Languages className="w-3.5 h-3.5" />
+                        {showTranslation ? "Hide Translation" : "Translate"}
+                    </Button>
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Copy className="h-4 w-4" />
+                                <span className="sr-only">Copy transcript</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-48 p-1" align="end">
+                            <div className="flex flex-col gap-0.5">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="justify-start gap-2 h-8 px-2 text-xs font-normal"
+                                    onClick={() => handleCopy("article")}
+                                >
+                                    {copiedState === "article" ? (
+                                        <Check className="h-3.5 w-3.5 text-green-500" />
+                                    ) : (
+                                        <FileText className="h-3.5 w-3.5" />
+                                    )}
+                                    Copy Text
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="justify-start gap-2 h-8 px-2 text-xs font-normal"
+                                    onClick={() => handleCopy("original")}
+                                >
+                                    {copiedState === "original" ? (
+                                        <Check className="h-3.5 w-3.5 text-green-500" />
+                                    ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                    )}
+                                    Copy Subtitles
+                                </Button>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </div>
             <div
                 ref={scrollRef}
@@ -169,18 +238,20 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                     })}
                 </div>
             </div>
-            {isUserScrolling && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        className="shadow-lg bg-background/80 backdrop-blur-sm border hover:bg-background/90"
-                        onClick={() => setIsUserScrolling(false)}
-                    >
-                        Back to current
-                    </Button>
-                </div>
-            )}
-        </div>
+            {
+                isUserScrolling && (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            className="shadow-lg bg-background/80 backdrop-blur-sm border hover:bg-background/90"
+                            onClick={() => setIsUserScrolling(false)}
+                        >
+                            Back to current
+                        </Button>
+                    </div>
+                )
+            }
+        </div >
     );
 }
