@@ -8,6 +8,8 @@ import { Search, Youtube } from "lucide-react";
 import { toast } from "sonner";
 import { Settings } from "@/components/settings";
 
+import { PlaylistDialog } from "@/components/playlist-dialog";
+
 export default function Home() {
     const [url, setUrl] = useState("");
     const router = useRouter();
@@ -41,8 +43,9 @@ export default function Home() {
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 rounded-full blur-[120px]" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px]" />
 
-            {/* Settings Button */}
-            <div className="absolute top-4 right-4 z-20">
+            {/* Settings & Playlists Buttons */}
+            <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
+                <PlaylistDialog />
                 <Settings />
             </div>
 

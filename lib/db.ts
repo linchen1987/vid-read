@@ -143,6 +143,27 @@ class VideoDB {
         });
         return this.saveQueue;
     }
+    async getAllVideos(): Promise<VideoData[]> {
+        try {
+            const db = await this.getDB();
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction(STORE_NAME, 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+
+                request.onsuccess = () => {
+                    const result = request.result as VideoData[];
+                    // Sort by updatedAt desc
+                    result.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+                    resolve(result);
+                };
+                request.onerror = () => reject(request.error);
+            });
+        } catch (error) {
+            console.error('VideoDB getAllVideos error:', error);
+            return [];
+        }
+    }
 }
 
 export const videoDB = new VideoDB();

@@ -29,7 +29,7 @@ export async function fetchVideoMetadata(videoId: string, apiKey?: string): Prom
                 const data = await response.json();
                 return {
                     title: data.title,
-                    author_name: data.channel || data.author,
+                    author_name: typeof data.channel === 'object' ? data.channel.name : (data.channel || data.author),
                     description: data.description,
                     publish_date: data.uploadDate,
                     thumbnail_url: data.thumbnail
