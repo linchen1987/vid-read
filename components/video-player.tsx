@@ -89,6 +89,10 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
         percentageRef.current = leftPanelPercentage;
     }, [leftPanelPercentage]);
 
+    const [isDragging, setIsDragging] = useState(false);
+
+
+
     // Persistence: Layout Ratio
     useEffect(() => {
         const savedRatio = localStorage.getItem("layout-left-panel-ratio");
@@ -99,6 +103,8 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
             }
         }
     }, []);
+
+
 
     // Persistence: Playback Time (Load)
     useEffect(() => {
@@ -343,6 +349,7 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
 
     const handleMouseDown = (e: React.MouseEvent) => {
         isDraggingRef.current = true;
+        setIsDragging(true);
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.userSelect = 'none';
@@ -362,6 +369,7 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
 
     const handleMouseUp = () => {
         isDraggingRef.current = false;
+        setIsDragging(false);
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
         document.body.style.userSelect = '';
@@ -407,7 +415,7 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                     )}
 
                     <Card className="overflow-hidden shadow-sm p-0">
-                        <div className="relative bg-black overflow-hidden aspect-video">
+                        <div className={`relative bg-black overflow-hidden aspect-video ${isDragging ? 'pointer-events-none' : ''}`}>
                             <div
                                 id="youtube-player"
                                 className="absolute top-0 left-0 w-full h-full"
