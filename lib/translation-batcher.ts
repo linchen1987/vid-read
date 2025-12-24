@@ -1,3 +1,5 @@
+import { fetchProxy } from "./proxy";
+
 export class TranslationBatcher {
     private queue: Array<{
         text: string;
@@ -46,23 +48,57 @@ export class TranslationBatcher {
         const texts = batch.map((item) => item.text);
 
         try {
-            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            const TARGET_API = 'https://api.x.ai/v1/chat/completions';
+            const headers: Record<string, string> = {
+                "Content-Type": "application/json",
+            };
             if (this.apiKey) {
-                headers["x-api-key"] = this.apiKey;
+                headers["Authorization"] = `Bearer ${this.apiKey}`;
+            } else {
+                throw new Error("Missing XAI API Key");
             }
 
-            const response = await fetch("/api/translate", {
+            const response = await fetchProxy(TARGET_API, {
                 method: "POST",
                 headers: headers,
-                body: JSON.stringify({ texts, targetLanguage: this.targetLanguage }),
+                body: JSON.stringify({
+                    model: 'grok-4-1-fast-non-reasoning',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `You are a professional translator. Translate the following texts into ${this.targetLanguage || 'Chinese'}. 
+            be concise and natural.
+            Output ONLY a JSON object with a "translations" key containing the array of translated strings in the same order.
+            Example: { "translations": ["Hello", "World"] } -> { "translations": ["你好", "世界"] }`
+                        },
+                        {
+                            role: 'user',
+                            content: JSON.stringify({ texts })
+                        }
+                    ],
+                    temperature: 0.3,
+                    response_format: { type: 'json_object' }
+                })
             });
 
             if (!response.ok) {
-                throw new Error(`Translation failed: ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`Translation failed: ${response.status} ${response.statusText} - ${errorText}`);
             }
 
             const data = await response.json();
-            const translations: string[] = data.translations;
+            // Parse nested JSON content from LLM response
+            const content = data.choices[0]?.message?.content;
+            if (!content) throw new Error("Empty response from translation provider");
+
+            let parsed;
+            try {
+                parsed = JSON.parse(content);
+            } catch (e) {
+                throw new Error("Failed to parse JSON from LLM");
+            }
+
+            const translations: string[] = parsed.translations;
 
             batch.forEach((item, index) => {
                 item.resolve(translations[index] || item.text);

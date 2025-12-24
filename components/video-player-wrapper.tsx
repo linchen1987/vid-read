@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { VideoPlayer } from "./video-player";
-import { fetchVideoMetadata } from "@/actions/metadata";
-import { fetchTranscript } from "@/actions/transcript";
+import { fetchVideoMetadata, fetchTranscript } from "@/lib/supadata-client";
 import { videoDB, TranscriptSegment } from "@/lib/db";
 
 interface VideoPlayerWrapperProps {
