@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "@/hooks/use-translation";
-import { Languages, Copy, FileText, Check } from "lucide-react";
+import { Languages, Copy, FileText, Check, Download } from "lucide-react";
 import { videoDB } from "@/lib/db";
 
 interface TranscriptSegment {
@@ -153,6 +153,42 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
         }
     };
 
+    const handleDownload = (type: "text" | "srt") => {
+        if (!transcript.length) return;
+
+        let content = "";
+        let filename = `transcript.${type}`;
+        let mimeType = "text/plain";
+
+        if (type === "text") {
+            content = transcript.map(s => s.text).join("\n");
+        } else if (type === "srt") {
+            content = transcript.map((segment, index) => {
+                const formatTime = (seconds: number) => {
+                    const date = new Date(seconds * 1000);
+                    const hh = Math.floor(seconds / 3600).toString().padStart(2, '0');
+                    const mm = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+                    const ss = Math.floor(seconds % 60).toString().padStart(2, '0');
+                    const ms = Math.floor((seconds % 1) * 1000).toString().padStart(3, '0');
+                    return `${hh}:${mm}:${ss},${ms}`;
+                };
+                const start = formatTime(segment.start);
+                const end = formatTime(segment.start + segment.duration);
+                return `${index + 1}\n${start} --> ${end}\n${segment.text}\n`;
+            }).join("\n");
+        }
+
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     if (!transcript || transcript.length === 0) {
         return <div className="p-4 text-center text-muted-foreground">No transcript available</div>;
     }
@@ -206,6 +242,25 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                                         <Copy className="h-3.5 w-3.5" />
                                     )}
                                     Copy Subtitles
+                                </Button>
+                                <div className="h-px bg-border my-1" />
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="justify-start gap-2 h-8 px-2 text-xs font-normal"
+                                    onClick={() => handleDownload("text")}
+                                >
+                                    <Download className="h-3.5 w-3.5" />
+                                    Download Text
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="justify-start gap-2 h-8 px-2 text-xs font-normal"
+                                    onClick={() => handleDownload("srt")}
+                                >
+                                    <Download className="h-3.5 w-3.5" />
+                                    Download Subtitles
                                 </Button>
                             </div>
                         </PopoverContent>
