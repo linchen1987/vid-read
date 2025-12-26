@@ -8,6 +8,7 @@ import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { TranscriptView } from "@/components/transcript-view";
 import { videoDB, VideoMeta } from "@/lib/db";
 import { ExternalLink } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface TranscriptSegment {
     text: string;
@@ -30,46 +31,10 @@ function formatDuration(seconds: number) {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
-function formatTimeAgo(dateString: string) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (isNaN(seconds)) return "";
-
-    const intervals = {
-        year: 31536000,
-        month: 2592000,
-        week: 604800,
-        day: 86400,
-        hour: 3600,
-        minute: 60
-    };
-
-    if (seconds < intervals.minute) {
-        return "just now";
-    } else if (seconds < intervals.hour) {
-        const count = Math.floor(seconds / intervals.minute);
-        return `${count} minute${count > 1 ? 's' : ''} ago`;
-    } else if (seconds < intervals.day) {
-        const count = Math.floor(seconds / intervals.hour);
-        return `${count} hour${count > 1 ? 's' : ''} ago`;
-    } else if (seconds < intervals.week) {
-        const count = Math.floor(seconds / intervals.day);
-        return `${count} day${count > 1 ? 's' : ''} ago`;
-    } else if (seconds < intervals.month) {
-        const count = Math.floor(seconds / intervals.week);
-        return `${count} week${count > 1 ? 's' : ''} ago`;
-    } else if (seconds < intervals.year) {
-        const count = Math.floor(seconds / intervals.month);
-        return `${count} month${count > 1 ? 's' : ''} ago`;
-    } else {
-        const count = Math.floor(seconds / intervals.year);
-        return `${count} year${count > 1 ? 's' : ''} ago`;
-    }
-}
+// function formatTimeAgo(dateString: string) { ... } // Removed as we use t()
 
 export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerProps) {
+    const t = useTranslations("VideoPlayer");
     console.log("VideoPlayer metadata:", metadata);
     const playerRef = useRef<any>(null);
     const [playerReady, setPlayerReady] = useState(false);
@@ -485,7 +450,22 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                             </h1>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 {metadata.publishDate && (
-                                    <span>{formatTimeAgo(metadata.publishDate)}</span>
+                                    <span>
+                                        {(() => {
+                                            const date = new Date(metadata.publishDate);
+                                            const now = new Date();
+                                            const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+                                            // 1 minute = 60, hour = 3600, day = 86400, week = 604800, month = 2592000, year = 31536000
+                                            if (seconds < 60) return t('justNow');
+                                            if (seconds < 3600) return t('minutesAgo', { count: Math.floor(seconds / 60) });
+                                            if (seconds < 86400) return t('hoursAgo', { count: Math.floor(seconds / 3600) });
+                                            if (seconds < 604800) return t('daysAgo', { count: Math.floor(seconds / 86400) });
+                                            if (seconds < 2592000) return t('weeksAgo', { count: Math.floor(seconds / 604800) });
+                                            if (seconds < 31536000) return t('monthsAgo', { count: Math.floor(seconds / 2592000) });
+                                            return t('yearsAgo', { count: Math.floor(seconds / 31536000) });
+                                        })()}
+                                    </span>
                                 )}
                                 <a
                                     href={`https://www.youtube.com/watch?v=${videoId}`}
@@ -494,7 +474,7 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                                     className="flex items-center gap-1 hover:text-primary transition-colors"
                                 >
                                     <ExternalLink className="h-3 w-3" />
-                                    Watch on YouTube
+                                    {t('watchOnYouTube')}
                                 </a>
                             </div>
                         </div>
@@ -608,7 +588,7 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                             />
                         ) : (
                             <div className="flex items-center justify-center h-full text-muted-foreground">
-                                <p className="text-sm">Fetching transcript...</p>
+                                <p className="text-sm">{t('transcriptLoading')}</p>
                             </div>
                         )}
                     </div>

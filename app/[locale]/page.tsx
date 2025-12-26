@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/src/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Youtube } from "lucide-react";
 import { toast } from "sonner";
 import { Settings } from "@/components/settings";
+import { LanguageSwitcher } from "@/components/language-switcher";
 
 import { PlaylistDialog } from "@/components/playlist-dialog";
+import { useTranslations } from "next-intl";
 
 export default function Home() {
     const [url, setUrl] = useState("");
     const router = useRouter();
+    const t = useTranslations("Home");
 
     const handleGo = () => {
         let videoId = "";
@@ -33,7 +36,7 @@ export default function Home() {
         if (videoId) {
             router.push(`/v/${videoId}`);
         } else {
-            toast.error("Invalid YouTube URL or ID");
+            toast.error(t('invalidUrl'));
         }
     };
 
@@ -45,6 +48,7 @@ export default function Home() {
 
             {/* Settings & Playlists Buttons */}
             <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
+                <LanguageSwitcher />
                 <PlaylistDialog />
                 <Settings />
             </div>
@@ -55,10 +59,10 @@ export default function Home() {
                         <img src="/logo.svg" alt="VidRead Logo" className="w-20 h-20 drop-shadow-[0_0_25px_rgba(59,130,246,0.6)]" />
                     </div>
                     <h1 className="text-5xl md:text-7xl font-bold tracking-tighter bg-gradient-to-br from-white to-gray-400 bg-clip-text text-transparent pb-2">
-                        VidRead
+                        {t('title')}
                     </h1>
                     <p className="text-lg md:text-xl text-gray-400 max-w-md mx-auto">
-                        Read videos like articles. Paste a YouTube link below to start.
+                        {t('slogan')}
                     </p>
                 </div>
 
@@ -68,7 +72,7 @@ export default function Home() {
                     </div>
                     <Input
                         type="text"
-                        placeholder="Paste YouTube URL here..."
+                        placeholder={t('placeholder')}
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         onKeyDown={(e) => {
@@ -81,7 +85,7 @@ export default function Home() {
                         size="lg"
                         className="h-14 px-8 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-medium shadow-lg shadow-purple-900/20 transition-all duration-300 hover:scale-105"
                     >
-                        Play
+                        {t('play')}
                     </Button>
                 </div>
             </div>

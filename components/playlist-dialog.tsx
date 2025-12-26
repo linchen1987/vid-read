@@ -9,12 +9,14 @@ import { History, PlayCircle, Clock, Download, Upload, Trash2 } from "lucide-rea
 import { videoDB, VideoData } from "@/lib/db";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from "@/components/ui/popover";
+import { useTranslations } from "next-intl";
 
 export function PlaylistDialog() {
     const [open, setOpen] = useState(false);
     const [videos, setVideos] = useState<VideoData[]>([]);
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const t = useTranslations("PlaylistDialog");
 
     useEffect(() => {
         if (open) {
@@ -44,10 +46,10 @@ export function PlaylistDialog() {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            toast.success("History exported successfully");
+            toast.success(t('toast.exportSuccess'));
         } catch (error) {
             console.error("Export failed:", error);
-            toast.error("Failed to export history");
+            toast.error(t('toast.exportFail'));
         }
     };
 
@@ -62,7 +64,7 @@ export function PlaylistDialog() {
                 const importedVideos = JSON.parse(content);
 
                 if (!Array.isArray(importedVideos)) {
-                    throw new Error("Invalid format");
+                    throw new Error(t('toast.invalidFormat'));
                 }
 
                 let count = 0;
@@ -74,10 +76,10 @@ export function PlaylistDialog() {
                 }
 
                 await loadVideos();
-                toast.success(`Imported ${count} videos successfully`);
+                toast.success(t('toast.importSuccess', { count }));
             } catch (error) {
                 console.error("Import failed:", error);
-                toast.error("Failed to import history");
+                toast.error(t('toast.importFail'));
             } finally {
                 if (fileInputRef.current) {
                     fileInputRef.current.value = "";
@@ -90,23 +92,23 @@ export function PlaylistDialog() {
     const formatTime = (ms: number) => {
         if (!ms) return "";
         const seconds = Math.floor((Date.now() - ms) / 1000);
-        if (seconds < 60) return "Just now";
+        if (seconds < 60) return t('time.justNow');
         const minutes = Math.floor(seconds / 60);
-        if (minutes < 60) return `${minutes}m ago`;
+        if (minutes < 60) return t('time.minutesAgo', { count: minutes });
         const hours = Math.floor(minutes / 60);
-        if (hours < 24) return `${hours}h ago`;
+        if (hours < 24) return t('time.hoursAgo', { count: hours });
         const days = Math.floor(hours / 24);
-        return `${days}d ago`;
+        return t('time.daysAgo', { count: days });
     };
 
     const handleDelete = async (id: string) => {
         try {
             await videoDB.deleteVideo(id);
             setVideos((prev) => prev.filter((v) => v.id !== id));
-            toast.success("Video deleted from history");
+            toast.success(t('toast.deleteSuccess'));
         } catch (error) {
             console.error("Delete failed:", error);
-            toast.error("Failed to delete video");
+            toast.error(t('toast.deleteFail'));
         }
     };
 
@@ -136,7 +138,7 @@ export function PlaylistDialog() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px] bg-neutral-900 border-neutral-800 text-white p-0 overflow-hidden text-left">
                 <DialogHeader className="px-6 py-4 border-b border-neutral-800">
-                    <DialogTitle>History</DialogTitle>
+                    <DialogTitle>{t('title')}</DialogTitle>
                 </DialogHeader>
                 <div className="absolute right-12 top-3 flex items-center gap-2">
                     <Popover open={isImportOpen} onOpenChange={setIsImportOpen}>
@@ -145,7 +147,7 @@ export function PlaylistDialog() {
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 text-neutral-400 hover:text-white hover:bg-white/10"
-                                title="Import/Export"
+                                title={t('importExport')}
                                 onMouseEnter={handleMouseEnter}
                                 onMouseLeave={handleMouseLeave}
                             >
@@ -169,7 +171,7 @@ export function PlaylistDialog() {
                                     }}
                                 >
                                     <Upload className="h-3 w-3 mr-2" />
-                                    Import
+                                    {t('import')}
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -181,7 +183,7 @@ export function PlaylistDialog() {
                                     }}
                                 >
                                     <Download className="h-3 w-3 mr-2" />
-                                    Download
+                                    {t('download')}
                                 </Button>
                             </div>
                         </PopoverContent>
@@ -198,7 +200,7 @@ export function PlaylistDialog() {
                     {videos.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-neutral-500 space-y-2">
                             <History className="h-12 w-12 opacity-50" />
-                            <p>No watched videos yet</p>
+                            <p>{t('emptyState')}</p>
                         </div>
                     ) : (
                         videos.map((video) => (
@@ -231,7 +233,7 @@ export function PlaylistDialog() {
                                             {video.metadata?.author && (
                                                 <span>
                                                     {typeof video.metadata.author === 'object'
-                                                        ? (video.metadata.author as any).name || 'Unknown'
+                                                        ? (video.metadata.author as any).name || t('unknownAuthor')
                                                         : video.metadata.author}
                                                 </span>
                                             )}
@@ -261,7 +263,7 @@ export function PlaylistDialog() {
                                     <PopoverContent className="w-64 bg-neutral-900 border-neutral-800 p-3">
                                         <div className="space-y-3">
                                             <p className="text-sm text-neutral-300">
-                                                Delete this video? This action cannot be undone.
+                                                {t('deleteConfirm')}
                                             </p>
                                             <div className="flex justify-end gap-2">
                                                 <PopoverClose asChild>
@@ -270,7 +272,7 @@ export function PlaylistDialog() {
                                                         size="sm"
                                                         className="h-8 text-neutral-400 hover:text-white"
                                                     >
-                                                        Cancel
+                                                        {t('cancel')}
                                                     </Button>
                                                 </PopoverClose>
                                                 <Button
@@ -282,7 +284,7 @@ export function PlaylistDialog() {
                                                         await handleDelete(video.id);
                                                     }}
                                                 >
-                                                    Delete
+                                                    {t('delete')}
                                                 </Button>
                                             </div>
                                         </div>

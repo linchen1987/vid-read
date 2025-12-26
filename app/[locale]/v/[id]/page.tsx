@@ -1,8 +1,10 @@
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { VideoPlayerWrapper } from "@/components/video-player-wrapper";
 import { Settings } from "@/components/settings";
 import { PlaylistDialog } from "@/components/playlist-dialog";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { Link } from "@/src/i18n/routing";
+import { getTranslations } from "next-intl/server";
 
 interface PageProps {
     params: Promise<{
@@ -12,6 +14,7 @@ interface PageProps {
 
 export default async function VideoPage({ params }: PageProps) {
     const { id } = await params;
+    const t = await getTranslations("VideoPage");
 
     return (
         <div className="w-full min-h-screen bg-black dark relative flex flex-col text-foreground">
@@ -24,10 +27,11 @@ export default async function VideoPage({ params }: PageProps) {
                     <div className="p-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
                         <ArrowLeft className="w-4 h-4" />
                     </div>
-                    <span className="text-sm font-medium">Home</span>
+                    <span className="text-sm font-medium">{t('home')}</span>
                 </Link>
 
                 <div className="flex items-center space-x-2">
+                    <LanguageSwitcher />
                     <PlaylistDialog />
                     <Settings />
                 </div>

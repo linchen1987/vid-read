@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "@/hooks/use-translation";
+import { useTranslations } from "next-intl";
 import { Languages, Copy, FileText, Check, Download } from "lucide-react";
 import { videoDB } from "@/lib/db";
 
@@ -37,7 +38,8 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
 
     const [translations, setTranslations] = useState<Record<number, string>>({});
     const [showTranslation, setShowTranslation] = useState(false);
-    const { translate } = useTranslation("zh-CN");
+    const { translate } = useTranslation("zh-CN"); // This is AI translation hook, generic name.
+    const t = useTranslations("TranscriptView");
     const [isTranslatingAll, setIsTranslatingAll] = useState(false);
     const [copiedState, setCopiedState] = useState<"original" | "article" | null>(null);
 
@@ -190,13 +192,13 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
     };
 
     if (!transcript || transcript.length === 0) {
-        return <div className="p-4 text-center text-muted-foreground">No transcript available</div>;
+        return <div className="p-4 text-center text-muted-foreground">{t('noTranscript')}</div>;
     }
 
     return (
         <div className={cn("flex flex-col h-full bg-card rounded-lg overflow-hidden border shadow-sm relative", className)}>
             <div className="p-3 border-b bg-muted/30 flex justify-between items-center">
-                <h3 className="font-semibold text-sm">Transcript</h3>
+                <h3 className="font-semibold text-sm">{t('title')}</h3>
                 <div className="flex items-center gap-1">
                     <Button
                         variant="ghost"
@@ -205,14 +207,14 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                         onClick={() => setShowTranslation(!showTranslation)}
                     >
                         <Languages className="w-3.5 h-3.5" />
-                        {showTranslation ? "Hide Translation" : "Translate"}
+                        {showTranslation ? t('hideTranslation') : t('translate')}
                     </Button>
 
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                 <Copy className="h-4 w-4" />
-                                <span className="sr-only">Copy transcript</span>
+                                <span className="sr-only">{t('copy')}</span>
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-48 p-1" align="end">
@@ -228,7 +230,7 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                                     ) : (
                                         <FileText className="h-3.5 w-3.5" />
                                     )}
-                                    Copy Text
+                                    {t('copyText')}
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -241,7 +243,7 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                                     ) : (
                                         <Copy className="h-3.5 w-3.5" />
                                     )}
-                                    Copy Subtitles
+                                    {t('copySubtitles')}
                                 </Button>
                                 <div className="h-px bg-border my-1" />
                                 <Button
@@ -251,7 +253,7 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                                     onClick={() => handleDownload("text")}
                                 >
                                     <Download className="h-3.5 w-3.5" />
-                                    Download Text
+                                    {t('downloadText')}
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -260,7 +262,7 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                                     onClick={() => handleDownload("srt")}
                                 >
                                     <Download className="h-3.5 w-3.5" />
-                                    Download Subtitles
+                                    {t('downloadSubtitles')}
                                 </Button>
                             </div>
                         </PopoverContent>
@@ -312,7 +314,7 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                             className="shadow-lg bg-background/80 backdrop-blur-sm border hover:bg-background/90"
                             onClick={() => setIsUserScrolling(false)}
                         >
-                            Back to current
+                            {t('backToCurrent')}
                         </Button>
                     </div>
                 )
