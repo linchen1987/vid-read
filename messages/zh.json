@@ -3,7 +3,7 @@
         "title": "VidRead",
         "slogan": "像阅读文章一样阅读视频。在下方粘贴 YouTube 链接开始。",
         "placeholder": "在此粘贴 YouTube 链接...",
-        "play": "播放",
+        "play": "抓取",
         "invalidUrl": "无效的 YouTube URL 或 ID"
     },
     "VideoPage": {
