@@ -64,7 +64,6 @@
     },
     "Settings": {
         "title": "设置",
-        "description": "配置您的 AI 提供商和 API 密钥。",
         "aiApiKey": "AI API 密钥",
         "enterApiKey": "输入 {provider} API 密钥",
         "toggleVisibility": "切换密码可见性",

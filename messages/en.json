@@ -64,7 +64,6 @@
     },
     "Settings": {
         "title": "Settings",
-        "description": "Configure your AI providers and API keys.",
         "aiApiKey": "AI API Key",
         "enterApiKey": "Enter {provider} API Key",
         "toggleVisibility": "Toggle password visibility",

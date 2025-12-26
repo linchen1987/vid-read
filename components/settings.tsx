@@ -95,9 +95,6 @@ export function Settings() {
             <DialogContent className="sm:max-w-[600px] bg-zinc-950 border-zinc-800 text-zinc-100">
                 <DialogHeader>
                     <DialogTitle>{t('title')}</DialogTitle>
-                    <DialogDescription className="text-zinc-400">
-                        {t('description')}
-                    </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-6 py-4">
                     {/* Provider & Key (Combined Row) */}
