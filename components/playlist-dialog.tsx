@@ -8,7 +8,7 @@ import { useRef } from "react";
 import { History, PlayCircle, Clock, Download, Upload, Trash2 } from "lucide-react";
 import { videoDB, VideoData } from "@/lib/db";
 import { toast } from "sonner";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger, PopoverClose } from "@/components/ui/popover";
 
 export function PlaylistDialog() {
     const [open, setOpen] = useState(false);
@@ -264,13 +264,15 @@ export function PlaylistDialog() {
                                                 Delete this video? This action cannot be undone.
                                             </p>
                                             <div className="flex justify-end gap-2">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="h-8 text-neutral-400 hover:text-white"
-                                                >
-                                                    Cancel
-                                                </Button>
+                                                <PopoverClose asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 text-neutral-400 hover:text-white"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </PopoverClose>
                                                 <Button
                                                     variant="destructive"
                                                     size="sm"

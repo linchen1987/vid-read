@@ -1,3 +1,5 @@
+import { DEFAULT_PROVIDER } from "@/lib/constants";
+
 export class TranslationBatcher {
     private queue: Array<{
         text: string;
@@ -11,7 +13,8 @@ export class TranslationBatcher {
         private readonly batchDelay: number = 50,
         private readonly maxBatchSize: number = 50,
         private readonly targetLanguage: string = "zh-CN",
-        private readonly apiKey: string = ""
+        private readonly apiKey: string = "",
+        private readonly provider: string = DEFAULT_PROVIDER
     ) { }
 
     translate(text: string): Promise<string> {
@@ -54,7 +57,11 @@ export class TranslationBatcher {
             const response = await fetch("/api/translate", {
                 method: "POST",
                 headers: headers,
-                body: JSON.stringify({ texts, targetLanguage: this.targetLanguage }),
+                body: JSON.stringify({
+                    texts,
+                    targetLanguage: this.targetLanguage,
+                    provider: this.provider
+                }),
             });
 
             if (!response.ok) {

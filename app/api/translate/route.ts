@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createLLMProvider } from '@/lib/llm/factory';
+import { DEFAULT_PROVIDER } from '@/lib/constants';
 
 export async function POST(request: NextRequest) {
     try {
-        const { texts, targetLanguage } = await request.json();
+        const { texts, targetLanguage, provider: providerType } = await request.json();
 
         if (!texts || !Array.isArray(texts) || texts.length === 0) {
             return NextResponse.json({ error: 'Invalid request: texts array required' }, { status: 400 });
@@ -16,55 +18,33 @@ export async function POST(request: NextRequest) {
             apiKey = authHeader.substring(7);
         }
 
-        console.log("[API] Translation request received. Texts count:", texts.length, "Target:", targetLanguage);
+        console.log(`[API] Translation request. Provider: ${providerType || DEFAULT_PROVIDER}, Texts: ${texts.length}, Target: ${targetLanguage}`);
 
         if (!apiKey) {
-            console.error("[API] Missing XAI_API_KEY");
+            console.error("[API] Missing API Key");
             return NextResponse.json({ error: 'Server configuration error: Missing API Key' }, { status: 401 });
         }
 
-        // XAI uses OpenAI-compatible API
-        console.log("[API] Calling XAI...");
-        const response = await fetch('https://api.x.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-                model: 'grok-4-1-fast-non-reasoning',
-                messages: [
-                    {
-                        role: 'system',
-                        content: `You are a professional translator. Translate the following texts into ${targetLanguage || 'Chinese'}. 
+        const provider = createLLMProvider(providerType || DEFAULT_PROVIDER, apiKey);
+
+        console.log("[API] Calling LLM Provider...");
+
+        const llmResponse = await provider.chat([
+            {
+                role: 'system',
+                content: `You are a professional translator. Translate the following texts into ${targetLanguage || 'Chinese'}. 
             be concise and natural.
             Output ONLY a JSON object with a "translations" key containing the array of translated strings in the same order.
             Example: { "translations": ["Hello", "World"] } -> { "translations": ["你好", "世界"] }`
-                    },
-                    {
-                        role: 'user',
-                        content: JSON.stringify({ texts })
-                    }
-                ],
-                temperature: 0.3,
-                response_format: { type: 'json_object' }
-            })
-        });
+            },
+            {
+                role: 'user',
+                content: JSON.stringify({ texts })
+            }
+        ]);
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("[API] XAI API Error:", response.status, errorText);
-            return NextResponse.json({ error: `Translation provider error: ${response.statusText}`, details: errorText }, { status: 502 });
-        }
-
-        const data = await response.json();
-        console.log("[API] XAI response received");
-        const content = data.choices[0]?.message?.content;
-
-        if (!content) {
-            console.error("[API] Empty content from XAI");
-            return NextResponse.json({ error: 'Empty response from translation provider' }, { status: 502 });
-        }
+        console.log("[API] Provider response received");
+        const content = llmResponse.content;
 
         let parsed;
         try {

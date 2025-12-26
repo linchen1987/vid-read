@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { TranslationBatcher } from "../lib/translation-batcher";
+import { AI_CONFIG_STORAGE_KEY, DEFAULT_PROVIDER } from "@/lib/constants";
 
 interface UseTranslationResult {
     translate: (text: string) => Promise<string>;
@@ -12,12 +13,22 @@ export function useTranslation(targetLanguage: string = "zh-CN") {
 
     // Initialize batcher
     if (!batcherRef.current) {
-        // Get key inside effect or lazily? 
-        // NOTE: We need to recreate batcher if key changes? 
-        // For simplicity, we just read it once on mount. 
-        // Ideally we should react to key changes, but that might require Context.
-        const apiKey = localStorage.getItem("xai_api_key") || "";
-        batcherRef.current = new TranslationBatcher(50, 20, targetLanguage, apiKey);
+        // Read from consolidated storage
+        let provider = DEFAULT_PROVIDER;
+        let apiKey = "";
+
+        try {
+            const stored = localStorage.getItem(AI_CONFIG_STORAGE_KEY);
+            if (stored) {
+                const config = JSON.parse(stored);
+                if (config.provider) provider = config.provider;
+                if (config.keys && config.keys[provider]) apiKey = config.keys[provider];
+            }
+        } catch (e) {
+            console.error("Failed to load AI config in hook:", e);
+        }
+
+        batcherRef.current = new TranslationBatcher(50, 20, targetLanguage, apiKey, provider);
     }
 
     const translate = useCallback(
