@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { TranscriptView } from "@/components/transcript-view";
 import { videoDB, VideoMeta } from "@/lib/db";
 import { ExternalLink } from "lucide-react";
@@ -14,6 +14,9 @@ interface TranscriptSegment {
     start: number;
     duration: number;
 }
+
+const VOLUME_STORAGE_KEY = "VIDREAD_PLAYER_VOLUME";
+const MUTED_STORAGE_KEY = "VIDREAD_PLAYER_MUTED";
 
 interface VideoPlayerProps {
     videoId: string;
@@ -74,6 +77,8 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
     const [playbackRate, setPlaybackRate] = useState(1);
+    const [volume, setVolume] = useState(100);
+    const [isMuted, setIsMuted] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const [hoverTime, setHoverTime] = useState<number | null>(null);
     const [hoverPosition, setHoverPosition] = useState<number | null>(null);
@@ -179,6 +184,30 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                         if (event.target.getPlaybackRate) {
                             setPlaybackRate(event.target.getPlaybackRate());
                         }
+
+                        // Restore volume settings
+                        const savedVolume = localStorage.getItem(VOLUME_STORAGE_KEY);
+                        const savedMuted = localStorage.getItem(MUTED_STORAGE_KEY);
+
+                        if (savedVolume !== null) {
+                            const vol = parseInt(savedVolume, 10);
+                            event.target.setVolume(vol);
+                            setVolume(vol);
+                        } else if (event.target.getVolume) {
+                            setVolume(event.target.getVolume());
+                        }
+
+                        if (savedMuted !== null) {
+                            const muted = savedMuted === "true";
+                            if (muted) {
+                                event.target.mute();
+                            } else {
+                                event.target.unMute();
+                            }
+                            setIsMuted(muted);
+                        } else if (event.target.isMuted) {
+                            setIsMuted(event.target.isMuted());
+                        }
                     },
                     onPlaybackRateChange: (event: { data: number }) => {
                         if (!mounted) return;
@@ -273,6 +302,40 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
 
     const handleSeek = (value: number[]) => {
         seekTo(value[0]);
+    };
+
+    const toggleMute = () => {
+        if (!playerRef.current) return;
+        if (isMuted) {
+            playerRef.current.unMute();
+            setIsMuted(false);
+            localStorage.setItem(MUTED_STORAGE_KEY, "false");
+        } else {
+            playerRef.current.mute();
+            setIsMuted(true);
+            localStorage.setItem(MUTED_STORAGE_KEY, "true");
+        }
+    };
+
+    const handleVolumeChange = (value: number[]) => {
+        if (!playerRef.current) return;
+        const newVolume = value[0];
+        playerRef.current.setVolume(newVolume);
+        setVolume(newVolume);
+        localStorage.setItem(VOLUME_STORAGE_KEY, newVolume.toString());
+
+        // If volume is > 0 and was muted, unmute
+        if (newVolume > 0 && isMuted) {
+            playerRef.current.unMute();
+            setIsMuted(false);
+            localStorage.setItem(MUTED_STORAGE_KEY, "false");
+        }
+        // If volume becomes 0, mute
+        if (newVolume === 0 && !isMuted) {
+            playerRef.current.mute();
+            setIsMuted(true);
+            localStorage.setItem(MUTED_STORAGE_KEY, "true");
+        }
     };
 
     // Keyboard controls
@@ -451,6 +514,24 @@ export function VideoPlayer({ videoId, transcript = [], metadata }: VideoPlayerP
                             <Button variant="outline" size="icon" onClick={togglePlay}>
                                 {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                             </Button>
+
+                            <div className="flex items-center gap-2 group/volume relative">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleMute}>
+                                    {isMuted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                                </Button>
+                                <div className="w-0 overflow-hidden group-hover/volume:w-20 transition-all duration-300 ease-in-out">
+                                    <Slider
+                                        value={[isMuted ? 0 : volume]}
+                                        max={100}
+                                        step={1}
+                                        onValueChange={handleVolumeChange}
+                                        className="cursor-pointer"
+                                    />
+                                </div>
+                                <div className="absolute bottom-full left-10 mb-2 px-1.5 py-0.5 bg-secondary text-secondary-foreground text-[10px] font-mono rounded border shadow-sm opacity-0 group-hover/volume:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                    {isMuted ? 0 : volume}%
+                                </div>
+                            </div>
 
                             <div
                                 className="flex-1 relative py-2 cursor-pointer group"
