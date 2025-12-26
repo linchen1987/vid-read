@@ -71,14 +71,21 @@ export function Settings() {
                         <label htmlFor="supadata-key" className="text-right text-sm font-medium">
                             Supadata Key
                         </label>
-                        <Input
-                            id="supadata-key"
-                            value={supadataKey}
-                            onChange={handleSupadataKeyChange}
-                            className="bg-zinc-900 border-zinc-700 focus-visible:ring-purple-500"
-                            placeholder="Enter Supadata API Key"
-                            type="password"
-                        />
+                        <div className="flex flex-col gap-1">
+                            <Input
+                                id="supadata-key"
+                                value={supadataKey}
+                                onChange={handleSupadataKeyChange}
+                                className="bg-zinc-900 border-zinc-700 focus-visible:ring-purple-500"
+                                placeholder="Enter Supadata API Key"
+                                type="password"
+                            />
+                            <p className="text-[10px] text-zinc-500">
+                                <a href="https://supadata.ai/" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors">
+                                    https://supadata.ai/
+                                </a>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </DialogContent>

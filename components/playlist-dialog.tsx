@@ -110,6 +110,23 @@ export function PlaylistDialog() {
         }
     };
 
+    const [isImportOpen, setIsImportOpen] = useState(false);
+    const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleMouseEnter = () => {
+        if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current);
+            closeTimeoutRef.current = null;
+        }
+        setIsImportOpen(true);
+    };
+
+    const handleMouseLeave = () => {
+        closeTimeoutRef.current = setTimeout(() => {
+            setIsImportOpen(false);
+        }, 200);
+    };
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -122,24 +139,53 @@ export function PlaylistDialog() {
                     <DialogTitle>History</DialogTitle>
                 </DialogHeader>
                 <div className="absolute right-12 top-3 flex items-center gap-2">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-neutral-400 hover:text-white"
-                        onClick={handleExport}
-                        title="Export History"
-                    >
-                        <Download className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-neutral-400 hover:text-white"
-                        onClick={() => fileInputRef.current?.click()}
-                        title="Import History"
-                    >
-                        <Upload className="h-4 w-4" />
-                    </Button>
+                    <Popover open={isImportOpen} onOpenChange={setIsImportOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-neutral-400 hover:text-white hover:bg-white/10"
+                                title="Import/Export"
+                                onMouseEnter={handleMouseEnter}
+                                onMouseLeave={handleMouseLeave}
+                            >
+                                <Upload className="h-4 w-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                            className="w-40 bg-neutral-900 border-neutral-800 p-1"
+                            align="end"
+                            onMouseEnter={handleMouseEnter}
+                            onMouseLeave={handleMouseLeave}
+                        >
+                            <div className="flex flex-col gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start h-8 text-sm font-normal text-neutral-300 hover:text-white hover:bg-white/10"
+                                    onClick={() => {
+                                        fileInputRef.current?.click();
+                                        setIsImportOpen(false);
+                                    }}
+                                >
+                                    <Upload className="h-3 w-3 mr-2" />
+                                    Import
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start h-8 text-sm font-normal text-neutral-300 hover:text-white hover:bg-white/10"
+                                    onClick={() => {
+                                        handleExport();
+                                        setIsImportOpen(false);
+                                    }}
+                                >
+                                    <Download className="h-3 w-3 mr-2" />
+                                    Download
+                                </Button>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
                     <input
                         type="file"
                         ref={fileInputRef}
