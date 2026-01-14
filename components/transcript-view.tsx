@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTranslation } from "@/hooks/use-translation";
 import { useTranslations } from "next-intl";
-import { Languages, Copy, FileText, Check, Download } from "lucide-react";
+import { Languages, Copy, FileText, Check, Download, Type } from "lucide-react";
 import { videoDB } from "@/lib/db";
 
 interface TranscriptSegment {
@@ -42,6 +42,29 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
     const t = useTranslations("TranscriptView");
     const [isTranslatingAll, setIsTranslatingAll] = useState(false);
     const [copiedState, setCopiedState] = useState<"original" | "article" | null>(null);
+
+    const TRANSCRIPT_FONT_SIZE_KEY = "@vidread/transcript-font-size";
+    type FontSize = "text-sm" | "text-base" | "text-lg" | "text-xl";
+    const [fontSize, setFontSizeState] = useState<FontSize>("text-base");
+
+    useEffect(() => {
+        const savedSize = localStorage.getItem(TRANSCRIPT_FONT_SIZE_KEY);
+        if (savedSize) {
+            setFontSizeState(savedSize as FontSize);
+        }
+    }, []);
+
+    const setFontSize = (size: FontSize) => {
+        setFontSizeState(size);
+        localStorage.setItem(TRANSCRIPT_FONT_SIZE_KEY, size);
+    };
+
+    const fontSizes: { label: string; value: FontSize }[] = [
+        { label: t("small"), value: "text-sm" },
+        { label: t("medium"), value: "text-base" },
+        { label: t("large"), value: "text-lg" },
+        { label: t("extraLarge"), value: "text-xl" },
+    ];
 
     // Load translations from DB on mount/change
     useEffect(() => {
@@ -213,6 +236,35 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Type className="h-4 w-4" />
+                                <span className="sr-only">{t('fontSize')}</span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-40 p-1" align="end">
+                            <div className="flex flex-col gap-0.5">
+                                {fontSizes.map((size) => (
+                                    <Button
+                                        key={size.value}
+                                        variant="ghost"
+                                        size="sm"
+                                        className={cn(
+                                            "justify-start gap-2 h-8 px-2 text-xs font-normal",
+                                            fontSize === size.value && "bg-accent text-accent-foreground"
+                                        )}
+                                        onClick={() => setFontSize(size.value)}
+                                    >
+                                        <span className={cn("font-medium", size.value === "text-sm" ? "text-xs" : size.value === "text-lg" ? "text-lg" : size.value === "text-xl" ? "text-xl" : "text-sm")}>A</span>
+                                        {size.label}
+                                        {fontSize === size.value && <Check className="ml-auto h-3.5 w-3.5" />}
+                                    </Button>
+                                ))}
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                 <Copy className="h-4 w-4" />
                                 <span className="sr-only">{t('copy')}</span>
                             </Button>
@@ -291,11 +343,11 @@ export function TranscriptView({ transcript, currentTime, onSeek, className, vid
                                     {Math.floor(segment.start % 60).toString().padStart(2, "0")}
                                 </div>
                                 <div className="flex-1">
-                                    <p className={cn("text-sm leading-relaxed", isActive && "font-medium text-foreground")}>
+                                    <p className={cn(fontSize, "leading-relaxed", isActive && "font-medium text-foreground")}>
                                         {segment.text}
                                     </p>
                                     {showTranslation && translations[index] && (
-                                        <p className="mt-1 text-sm text-primary/80 leading-relaxed">
+                                        <p className={cn("mt-1 text-primary/80 leading-relaxed", fontSize)}>
                                             {translations[index]}
                                         </p>
                                     )}

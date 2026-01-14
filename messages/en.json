@@ -31,7 +31,12 @@
         "downloadText": "Download Text",
         "downloadSubtitles": "Download Subtitles",
         "backToCurrent": "Back to current",
-        "copySuccess": "Copied to clipboard!"
+        "copySuccess": "Copied to clipboard!",
+        "fontSize": "Font Size",
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large",
+        "extraLarge": "Extra Large"
     },
     "LanguageSwitcher": {
         "label": "Language"

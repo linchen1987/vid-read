@@ -31,7 +31,12 @@
         "downloadText": "下载文本",
         "downloadSubtitles": "下载字幕文件",
         "backToCurrent": "回到当前播放位置",
-        "copySuccess": "已复制到剪贴板！"
+        "copySuccess": "已复制到剪贴板！",
+        "fontSize": "字号",
+        "small": "小",
+        "medium": "中",
+        "large": "大",
+        "extraLarge": "特大"
     },
     "LanguageSwitcher": {
         "label": "语言"
